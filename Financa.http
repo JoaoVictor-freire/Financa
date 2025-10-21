@@ -1,0 +1,6 @@
+@Financa_HostAddress = http://localhost:5029
+
+GET {{Financa_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
