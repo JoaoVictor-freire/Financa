@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace Financa.Data.Models;
+namespace Financa.Models;
 
 public partial class FinancaContext : DbContext
 {
@@ -18,7 +18,6 @@ public partial class FinancaContext : DbContext
     public virtual DbSet<User> Users { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Server=.;Database=Financa;Trusted_Connection=True;TrustServerCertificate=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -31,9 +30,13 @@ public partial class FinancaContext : DbContext
                 .IsRequired()
                 .HasMaxLength(100)
                 .IsUnicode(false);
+            entity.Property(e => e.Nome)
+                .IsRequired()
+                .HasMaxLength(150)
+                .IsUnicode(false);
             entity.Property(e => e.Senha)
                 .IsRequired()
-                .HasMaxLength(50)
+                .HasMaxLength(200)
                 .IsUnicode(false);
         });
 

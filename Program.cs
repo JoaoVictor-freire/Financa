@@ -1,4 +1,4 @@
-using Financa.Data.Models;
+using Financa.Models;
 using Microsoft.EntityFrameworkCore;
 
 
