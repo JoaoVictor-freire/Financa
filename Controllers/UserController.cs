@@ -1,9 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Financa.Models;
+using Financa.dto;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using Microsoft.CodeAnalysis.Host.Mef;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using System.Data;
 
 namespace Financa.src.Controllers
 {
@@ -12,10 +19,36 @@ namespace Financa.src.Controllers
     public class UserController : ControllerBase
     {
         private readonly FinancaContext _context;
+        private readonly IConfiguration _config;
 
-        public UserController(FinancaContext context)
+        public UserController(FinancaContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
+        }
+
+        private string GenerateToken(User user)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.IdUsuario.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Name, user.Nome),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"],
+                audience: _config["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddHours(12),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         [HttpPost]
@@ -91,7 +124,7 @@ namespace Financa.src.Controllers
             {
                 return NotFound($"Usuário com ID {id} não encontrado.");
             }
-            
+
             userFromDb.Nome = updatedUser.Nome;
             userFromDb.Email = updatedUser.Email;
 
@@ -110,6 +143,37 @@ namespace Financa.src.Controllers
             }
 
             return NoContent();
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginModel loginModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var user = _context.Users.FirstOrDefault(u => u.Email == loginModel.Email);
+            
+            if(user == null){
+                return Unauthorized("Email ou Senha invalidos.");
+            }
+
+            bool correctPassword = BCrypt.Net.BCrypt.Verify(loginModel.Senha, user.Senha);
+            if (!correctPassword)
+            {
+                return Unauthorized("Email ou Senha invalidos.");
+            }
+
+            string token = GenerateToken(user);
+
+            return Ok(
+                new
+                {
+                    Token = token,
+                    Usuaario = new {user.IdUsuario, user.Nome, user.Email}
+                }
+            );
         }
     }
 }
